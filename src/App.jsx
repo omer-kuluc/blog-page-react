@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react"
+import './App.css'
 
 export default function Blog() {
-  const [page, setPage] = useState(<Editor changePage={changePage} />);
+  const [page, setPage] = useState(<Home changePage={changePage} />);
 
   function changePage(id) {
     if(id === null) {
@@ -12,9 +13,17 @@ export default function Blog() {
     setPage(<Detail id={id} changePage={changePage} />)
   }
 
+  function handleClick(e) {
+    if(e.target.checked) {
+      setPage(<Editor changePage={changePage} />);
+    } else {
+      setPage(<Home changePage={changePage} />);
+    }
+  }
+
   return (
     <>
-      <p style={{ textAlign: 'right' }}><button>Editör</button></p>
+      <p style={{ textAlign: 'right' }}><label><input type="checkbox" onChange={handleClick} /> Editör</label></p>
       {page}
     </>
   )
@@ -33,19 +42,20 @@ function Home({ changePage }) {
   }, []);
 
   return (
-    <>
-      <h1>Blog Anasayfa</h1>
+    <div className="container">
+      <h1>Kişiler ve Anahtar Sözcükler</h1>
       {posts.map(x => <BlogListItem key={x.id} {...x} changePage={changePage} />)}
-    </>
+    </div>
   )
 }
 
-function BlogListItem({ id, title, summary, created, changePage }) {
+function BlogListItem({ id, title, summary, created, changePage , imageUrl }) {
   return (
-    <div className="blogItem" onClick={() => changePage(id)}>
+    <div className="blogItem-card" onClick={() => changePage(id)}>
       <h3>{title}</h3>
       <p>{summary}</p>
       <p><em>{created}</em></p>
+      <img src= {imageUrl} alt="" />
       <hr />
     </div>
   )
@@ -77,6 +87,17 @@ function Detail({ id, changePage }) {
 
 function Editor() {
   const [posts, setPosts] = useState([]);
+  const [username, setUsername] = useState(localStorage.username ?? '');
+  const [password, setPassword] = useState(localStorage.password ?? '');
+
+  function promptLogin() {
+    const inputUsername = prompt('username');
+    const inputPass = prompt('password');
+    localStorage.username = inputUsername;
+    localStorage.password = inputPass;
+    setUsername(inputUsername);
+    setPassword(inputPass);
+  }
 
   useEffect(() => {
     async function getData() {
@@ -85,6 +106,10 @@ function Editor() {
     }
 
     getData();
+
+    if(username === '') {
+      promptLogin();
+    }
   }, []);
 
   const dialogRef = useRef(null);
@@ -92,14 +117,27 @@ function Editor() {
   async function handleSubmit(e) {
     const formData = new FormData(e.target);
     const formObj = Object.fromEntries(formData);
-    const newPost = await fetch(
+    const request = await fetch(
       'https://omar96.pythonanywhere.com/posts', 
       {
-        headers: {'Content-Type' : 'application/json'},
+        headers: {
+          'Content-Type' : 'application/json',
+          Authorization: `Basic ${btoa(`${username}:${password}`)}`
+        },
         method: 'POST',
         body: JSON.stringify(formObj)
       }
-    ).then(r => r.json());
+    )
+    
+    // kontrol yapıp akışı kestim
+    if(!request.ok) {
+      alert('ekleme yapılamadı.');
+      return;
+    }
+
+    const newPost = await request.json();
+
+    console.log(newPost);
 
     setPosts([...posts, newPost]);
     
@@ -111,25 +149,27 @@ function Editor() {
       return;
     }
 
-    await fetch(`https://omar96.pythonanywhere.com/posts/${id}`, { method: 'DELETE',
-      header : {
-        Autharization : `Basic ${btoa('admin:omar')}`
+    await fetch(`https://omar96.pythonanywhere.com/posts/${id}`, { 
+      method: 'DELETE',
+      headers: {
+        Authorization: `Basic ${btoa(`${username}:${password}`)}`
       }
      });
 
     setPosts(posts.filter(x => x.id !== id));
   }
 
-
   return (
     <>
       <p><button onClick={() => dialogRef.current.showModal()}>Yeni</button></p>
+      <p style={{ textAlign: 'right' }}><button onClick={() => promptLogin()}>yeniden giriş</button></p>
       <ul>
         {posts.map(x => <li key={x.id}>{x.title} - <a href="#">düzenle</a> - <a href="#" onClick={() => removePost(x.id)}>sil</a></li>)}
       </ul>
       <dialog ref={dialogRef}>
         <form onSubmit={handleSubmit} method="dialog" autoComplete="off">
           <p><input required type="text" name="title" placeholder="Başlık" /></p>
+          <p><input required type="text" name="imageUrl" placeholder="Görsel" /></p>
           <p><input required type="text" name="summary" placeholder="Özet" /></p>
           <p><textarea required name="body" placeholder="İçerik" rows={4} cols={40}></textarea></p>
           <p><button>Ekle</button></p>

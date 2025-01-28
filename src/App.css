@@ -48,15 +48,17 @@ h1, h2, h3, h4, h5, h6 {
 
 
 .container {
-  background-color: darkcyan;
-  color : white;
+  background-color: #F2EFE7;
   min-height: 100vh;
-  padding: 150px;
   width: 100%;
-  display: grid;
-  grid-template-columns: repeat(2,1fr);
 }
 
-.home-page {
-  background-color: red;
+.container h1 {
+  color : #2973B2;
+}
+
+.blogItem-card {
+  padding: 5px 10px;
+  border-color: 2px solid #48A6A7;
+  background-color: #9ACBD0;
 }
